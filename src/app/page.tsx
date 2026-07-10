@@ -15,7 +15,6 @@ import NoteList       from '@/components/notes/NoteList';
 import StickyNotes    from '@/components/notes/StickyNotes';
 import Editor         from '@/components/editor/Editor';
 import StatsPanel     from '@/components/dashboard/StatsPanel';
-import Heatmap        from '@/components/dashboard/Heatmap';
 import TimelinePanel  from '@/components/dashboard/TimelinePanel';
 import ToastContainer from '@/components/common/Toast';
 
@@ -29,7 +28,7 @@ export default function HomePage() {
   const [isCommandOpen,  setIsCommandOpen]  = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showHelpModal,  setShowHelpModal]  = useState(false);
-  const [activeTab,      setActiveTab]      = useState<'notes' | 'activity' | 'sticky'>('notes');
+  const [activeTab, setActiveTab] = useState<'activity' | 'sticky'>('activity');
 
   // Open sidebar by default on desktop after mount (avoids SSR mismatch)
   useEffect(() => {
@@ -51,7 +50,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg-base)] flex flex-col font-sans text-[var(--text-primary)] overflow-hidden theme-transition">
+    <div className="relative min-h-screen bg-[var(--bg-base)] flex flex-col font-sans text-[var(--text-primary)] overflow-x-hidden theme-transition">
       {/* Ambient decorations (dark mode only) */}
       <div className="absolute inset-0 bg-grid pointer-events-none opacity-40" />
       <div className="dark:block hidden absolute -top-40 -left-40 w-96 h-96 bg-cyber-cyan rounded-full blur-[160px] opacity-10 pointer-events-none" />
@@ -125,7 +124,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Main layout ───────────────────────────────────── */}
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="flex-1 flex overflow-x-hidden relative min-h-0">
         {/* Mobile backdrop */}
         <AnimatePresence>
           {showSidebar && (
@@ -193,19 +192,18 @@ export default function HomePage() {
       {/* ── Bottom dashboard ─────────────────────────────── */}
       <section className="shrink-0 border-t border-[var(--border-default)] bg-[var(--bg-panel)]/60 backdrop-blur-sm">
         <div className="flex items-center gap-0 border-b border-[var(--border-subtle)] px-4 overflow-x-auto">
-          {(['notes', 'activity', 'sticky'] as const).map(tab => (
+          {(['activity', 'sticky'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`whitespace-nowrap px-4 py-2.5 text-[10px] font-mono font-bold tracking-widest uppercase transition-colors border-b-2 shrink-0 ${activeTab === tab ? 'border-cyber-cyan text-cyber-cyan' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
               aria-label={`Switch to ${tab} tab`}
             >
-              {tab === 'notes' ? 'HEATMAP' : tab === 'activity' ? 'ACTIVITY' : 'SCRATCHPADS'}
+              {tab === 'activity' ? 'ACTIVITY' : 'SCRATCHPADS'}
             </button>
           ))}
         </div>
         <div className="p-3 sm:p-4 max-h-[240px] sm:max-h-[280px] overflow-y-auto">
-          {activeTab === 'notes'    && <Heatmap activities={notes.activities} />}
           {activeTab === 'activity' && (
             <TimelinePanel
               activities={notes.activities}
@@ -239,7 +237,6 @@ export default function HomePage() {
                 <button onClick={() => setShowStatsModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl leading-none">✕</button>
               </div>
               <StatsPanel stats={notes.stats} />
-              <Heatmap activities={notes.activities} />
             </motion.div>
           </motion.div>
         )}
