@@ -1,0 +1,6 @@
+{
+  "name": "DevOS Workspace",
+  "description": "A futuristic developer-centric note-taking workspace and knowledge hub styled as a sleek developer operating system with 3-panel IDE layout, command palette, activity heatmap, and glassmorphism styling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
