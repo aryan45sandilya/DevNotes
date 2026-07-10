@@ -168,16 +168,16 @@ export default function SignInPage() {
         {isOn ? '— WORKSPACE UNLOCKED —' : 'PULL THE STRING TO LOGIN'}
       </motion.p>
 
-      {/* Layout: lamp left, form right */}
-      <div className="flex items-end gap-16 w-full max-w-4xl relative z-10">
+      {/* Layout: lamp top on mobile, side by side on desktop */}
+      <div className="flex flex-col md:flex-row md:items-end md:gap-16 w-full max-w-4xl relative z-10 gap-6 items-center">
 
-        {/* Floor Lamp */}
-        <div className="shrink-0">
+        {/* Floor Lamp — smaller on mobile */}
+        <div className="shrink-0 scale-75 md:scale-100 origin-bottom">
           <FloorLamp isOn={isOn} onPull={() => setIsOn(p => !p)} />
         </div>
 
         {/* Sign In Form */}
-        <div className="flex-1">
+        <div className="flex-1 w-full">
           <AnimatePresence>
             {isOn ? (
               <motion.div

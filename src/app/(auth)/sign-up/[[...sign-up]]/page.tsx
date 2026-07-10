@@ -108,12 +108,12 @@ export default function SignUpPage() {
         {isOn ? '— INITIALIZING WORKSPACE —' : 'PULL THE STRING TO SIGN UP'}
       </motion.p>
 
-      <div className="flex items-end gap-16 w-full max-w-4xl relative z-10">
-        <div className="shrink-0">
+      <div className="flex flex-col md:flex-row md:items-end md:gap-16 w-full max-w-4xl relative z-10 gap-6 items-center">
+        <div className="shrink-0 scale-75 md:scale-100 origin-bottom">
           <FloorLamp isOn={isOn} onPull={() => setIsOn(p => !p)} />
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 w-full">
           <AnimatePresence>
             {isOn ? (
               <motion.div
