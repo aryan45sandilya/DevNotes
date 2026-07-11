@@ -188,6 +188,8 @@ export default function SignInPage() {
                 transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
               >
                 <SignIn
+                  signUpUrl="/sign-up"
+                  forceRedirectUrl="/"
                   appearance={{
                     variables: {
                       colorPrimary:                '#FFB800',

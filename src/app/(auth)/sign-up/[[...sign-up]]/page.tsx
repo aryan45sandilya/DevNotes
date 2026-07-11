@@ -124,6 +124,9 @@ export default function SignUpPage() {
                 transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
               >
                 <SignUp
+                  signInUrl="/sign-in"
+                  forceRedirectUrl="/"
+                  fallbackRedirectUrl="/"
                   appearance={{
                     variables: {
                       colorPrimary:                '#00E5FF',

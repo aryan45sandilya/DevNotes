@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { FolderPlus, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { Folder, Note } from '@/types';
 
 interface Props {
@@ -31,18 +33,58 @@ function borderHover(color: Folder['color']) {
 }
 
 export default function Sidebar({ folders, notes, activeFolderId, onSelectFolder, onAddFolder, onDeleteFolder }: Props) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--bg-card)]">
-        <span className="text-[10px] tracking-widest font-mono text-[var(--text-muted)] font-bold">DIRECTORY ROOT</span>
-        <button
-          onClick={onAddFolder}
-          className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-cyan transition-colors"
-          title="New folder"
-          aria-label="Add new folder"
-        >
-          <FolderPlus className="w-4 h-4" />
-        </button>
+        <span className="text-[10px] tracking-widest font-mono text-[var(--text-muted)] font-bold">
+          DIRECTORY ROOT
+        </span>
+
+        {/* New Folder button with custom tooltip */}
+        <div className="relative">
+          <button
+            onClick={onAddFolder}
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            onFocus={() => setShowTooltip(true)}
+            onBlur={() => setShowTooltip(false)}
+            className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-cyan transition-colors"
+            aria-label="Add new folder"
+          >
+            <FolderPlus className="w-4 h-4" />
+          </button>
+
+          {/* Custom floating tooltip */}
+          <AnimatePresence>
+            {showTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="absolute right-0 top-full mt-2 z-50 pointer-events-none"
+              >
+                {/* Arrow */}
+                <div className="absolute -top-1.5 right-2 w-3 h-3 rotate-45 bg-[var(--bg-panel)] border-l border-t border-[var(--border-default)]" />
+
+                {/* Tooltip body */}
+                <div className="relative bg-[var(--bg-panel)] border border-[var(--border-default)] rounded-xl px-3 py-2.5 shadow-xl min-w-[140px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan animate-pulse shrink-0" />
+                    <span className="text-[11px] font-mono font-bold text-[var(--text-primary)] whitespace-nowrap">
+                      New Folder
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">
+                    Create a new directory to organize your notes
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="p-3 space-y-2 overflow-y-auto">
@@ -71,11 +113,12 @@ export default function Sidebar({ folders, notes, activeFolderId, onSelectFolder
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-hover)] px-1.5 py-0.5 rounded font-bold">{count}</span>
+                <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-hover)] px-1.5 py-0.5 rounded font-bold">
+                  {count}
+                </span>
                 <button
                   onClick={e => onDeleteFolder(folder.id, e)}
                   className="p-0.5 rounded text-[var(--text-muted)] hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                  title="Delete folder"
                   aria-label={`Delete folder ${folder.name}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />

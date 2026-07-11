@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Cpu, Search, Sparkles, HelpCircle, PanelLeftClose, PanelLeft, Download, Upload, RefreshCw, Menu } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Cpu, Search, Sparkles, HelpCircle, PanelLeftClose, PanelLeft, Download, Upload, RefreshCw, Menu, MoreVertical } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { UserButton, useUser } from '@clerk/nextjs';
 
+import Link from 'next/link';
 import { useNotes } from '@/hooks/useNotes';
 
 // ── Feature components ────────────────────────────────────
@@ -13,6 +14,7 @@ import CommandPalette from '@/components/sidebar/CommandPalette';
 import DarkModeToggle from '@/components/sidebar/DarkModeToggle';
 import NoteList       from '@/components/notes/NoteList';
 import StickyNotes    from '@/components/notes/StickyNotes';
+import CollapsibleSidebar from '@/components/sidebar/CollapsibleSidebar';
 import Editor         from '@/components/editor/Editor';
 import StatsPanel     from '@/components/dashboard/StatsPanel';
 import TimelinePanel  from '@/components/dashboard/TimelinePanel';
@@ -21,14 +23,26 @@ import ToastContainer from '@/components/common/Toast';
 export default function HomePage() {
   const notes = useNotes();
   const { user } = useUser();
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // ── UI-only toggles (no persistence needed) ───────────────
+  // ── UI-only toggles ───────────────────────────────────────
   const [showSidebar,    setShowSidebar]    = useState(false);
   const [showPreview,    setShowPreview]    = useState(false);
   const [isCommandOpen,  setIsCommandOpen]  = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showHelpModal,  setShowHelpModal]  = useState(false);
-  const [activeTab, setActiveTab] = useState<'activity' | 'sticky'>('activity');
+  const [activeTab,      setActiveTab]      = useState<'activity' | 'sticky'>('activity');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setShowMobileMenu(false);
+      }
+    }
+    if (showMobileMenu) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMobileMenu]);
 
   // Open sidebar by default on desktop after mount (avoids SSR mismatch)
   useEffect(() => {
@@ -89,10 +103,13 @@ export default function HomePage() {
         </button>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* Mobile search */}
           <button onClick={() => setIsCommandOpen(true)} className="p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] md:hidden transition-colors" aria-label="Search"><Search className="w-4 h-4" /></button>
-          <button onClick={() => setShowStatsModal(true)} className="p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-lime transition-colors" title="Workspace stats" aria-label="Open stats"><Sparkles className="w-4 h-4" /></button>
-          <button onClick={() => setShowHelpModal(true)} className="hidden sm:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] transition-colors" title="Keyboard shortcuts" aria-label="Help"><HelpCircle className="w-4 h-4" /></button>
-          <div className="h-4 w-px bg-[var(--border-default)]" />
+
+          {/* Desktop buttons */}
+          <button onClick={() => setShowStatsModal(true)} className="hidden sm:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-lime transition-colors" title="Workspace stats" aria-label="Open stats"><Sparkles className="w-4 h-4" /></button>
+          <Link href="/help" className="hidden sm:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-cyan transition-colors" title="Help & Features" aria-label="Help"><HelpCircle className="w-4 h-4" /></Link>
+          <div className="hidden sm:block h-4 w-px bg-[var(--border-default)]" />
           <DarkModeToggle />
           <label className="hidden sm:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-cyan transition-colors cursor-pointer" title="Import backup" aria-label="Import workspace">
             <Upload className="w-4 h-4" />
@@ -100,8 +117,54 @@ export default function HomePage() {
           </label>
           <button onClick={notes.handleExport} className="hidden sm:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-cyber-cyan transition-colors" title="Export backup" aria-label="Export workspace"><Download className="w-4 h-4" /></button>
           <button onClick={notes.handleReset} className="hidden md:flex p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-amber-400 transition-colors" title="Reset to demo" aria-label="Reset workspace"><RefreshCw className="w-4 h-4" /></button>
+
+          {/* Mobile ⋮ more menu */}
+          <div className="relative sm:hidden" ref={mobileMenuRef}>
+            <button
+              onClick={() => setShowMobileMenu(p => !p)}
+              className="p-2 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-muted)] transition-colors"
+              aria-label="More options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+            <AnimatePresence>
+              {showMobileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 z-50 bg-[var(--bg-panel)] border border-[var(--border-default)] rounded-2xl shadow-2xl p-2 min-w-[180px] flex flex-col gap-0.5"
+                >
+                  <button onClick={() => { setShowStatsModal(true); setShowMobileMenu(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors w-full text-left">
+                    <Sparkles className="w-4 h-4 text-cyber-lime shrink-0" />
+                    <span className="text-xs font-mono">Workspace Stats</span>
+                  </button>
+                  <Link href="/help" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors">
+                    <HelpCircle className="w-4 h-4 text-cyber-cyan shrink-0" />
+                    <span className="text-xs font-mono">Help & Features</span>
+                  </Link>
+                  <div className="h-px bg-[var(--border-subtle)] mx-2 my-1" />
+                  <button onClick={() => { notes.handleExport(); setShowMobileMenu(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors w-full text-left">
+                    <Download className="w-4 h-4 text-cyber-cyan shrink-0" />
+                    <span className="text-xs font-mono">Export Backup</span>
+                  </button>
+                  <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors cursor-pointer">
+                    <Upload className="w-4 h-4 text-cyber-cyan shrink-0" />
+                    <span className="text-xs font-mono">Import Backup</span>
+                    <input type="file" accept=".json" className="hidden" onChange={e => { notes.handleImport(e); setShowMobileMenu(false); }} />
+                  </label>
+                  <div className="h-px bg-[var(--border-subtle)] mx-2 my-1" />
+                  <button onClick={() => { notes.handleReset(); setShowMobileMenu(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-colors w-full text-left">
+                    <RefreshCw className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="text-xs font-mono">Reset to Demo</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <div className="h-4 w-px bg-[var(--border-default)]" />
-          {/* User avatar + logout — Clerk UserButton */}
           <UserButton
             afterSignOutUrl="/sign-in"
             appearance={{
@@ -151,19 +214,19 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div className="max-h-[40%] border-b border-[var(--border-subtle)] overflow-hidden">
-                <Sidebar
-                  folders={notes.folders} notes={notes.notes}
+              {/* Collapsible VS Code-style explorer */}
+              <div className="flex-1 overflow-hidden">
+                <CollapsibleSidebar
+                  folders={notes.folders}
+                  notes={notes.notes}
+                  filteredNotes={notes.filteredNotes}
+                  activities={notes.activities}
+                  activeNoteId={notes.activeNoteId}
                   activeFolderId={notes.activeFolderId}
+                  filterFavorites={notes.filterFavorites}
                   onSelectFolder={(id) => { notes.handleSelectFolder(id); closeSidebarOnMobile(); }}
                   onAddFolder={notes.handleAddFolder}
                   onDeleteFolder={notes.handleDeleteFolder}
-                />
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <NoteList
-                  notes={notes.filteredNotes} activeNoteId={notes.activeNoteId}
-                  filterFavorites={notes.filterFavorites}
                   onSelectNote={(id) => { notes.setActiveNoteId(id); closeSidebarOnMobile(); }}
                   onCreateNote={() => notes.handleCreateNote(notes.activeFolderId)}
                   onDeleteNote={notes.handleDeleteNote}
@@ -237,35 +300,6 @@ export default function HomePage() {
                 <button onClick={() => setShowStatsModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl leading-none">✕</button>
               </div>
               <StatsPanel stats={notes.stats} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Help modal ────────────────────────────────────── */}
-      <AnimatePresence>
-        {showHelpModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowHelpModal(false)} />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-sm bg-[var(--bg-panel)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl z-10">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-sm font-bold font-display tracking-widest uppercase text-[var(--text-primary)]">KEYBOARD SHORTCUTS</h2>
-                <button onClick={() => setShowHelpModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl leading-none">✕</button>
-              </div>
-              <ul className="space-y-3">
-                {[
-                  ['Ctrl + K', 'Open Command Palette'],
-                  ['Ctrl + S', 'Save & Compile Note'],
-                  ['↑ ↓',      'Navigate palette items'],
-                  ['Enter',    'Select palette item'],
-                  ['Escape',   'Close palette / modal'],
-                ].map(([key, desc]) => (
-                  <li key={key} className="flex justify-between items-center text-xs">
-                    <span className="font-mono bg-[var(--bg-card)] border border-[var(--border-default)] px-2 py-1 rounded text-cyber-cyan">{key}</span>
-                    <span className="text-[var(--text-secondary)]">{desc}</span>
-                  </li>
-                ))}
-              </ul>
             </motion.div>
           </motion.div>
         )}
