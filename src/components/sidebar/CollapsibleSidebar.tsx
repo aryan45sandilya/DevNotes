@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ChevronRight, FolderPlus, Plus, Heart, Pin,
   Trash2, Hash, Clock, FilePlus, FileEdit,
-  Star, Folder as FolderIcon,
+  Star, Folder as FolderIcon, SlidersHorizontal, X, Search,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import ClientDate from '@/components/common/ClientDate';
@@ -128,6 +128,8 @@ export default function CollapsibleSidebar({
 }: Props) {
   const [sections, setSections] = useState<Record<SectionKey, boolean>>(DEFAULT_STATE);
   const [showFolderTooltip, setShowFolderTooltip] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -144,6 +146,16 @@ export default function CollapsibleSidebar({
   }, []);
 
   const favoriteNotes = notes.filter(n => n.favorite);
+
+  // ── Filter logic ──────────────────────────────────────────
+  const q = filterQuery.toLowerCase().trim();
+  const displayedNotes = q
+    ? filteredNotes.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.tags.some(t => t.toLowerCase().includes(q)) ||
+        n.content.toLowerCase().includes(q)
+      )
+    : filteredNotes;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden">
@@ -253,6 +265,14 @@ export default function CollapsibleSidebar({
         action={
           <div className="flex items-center gap-1">
             <button
+              onClick={() => { setShowFilter(p => !p); if (showFilter) setFilterQuery(''); }}
+              className={`p-1 rounded transition-colors ${showFilter ? 'text-cyber-cyan bg-cyber-cyan/10' : 'text-[var(--text-muted)] hover:text-cyber-cyan hover:bg-[var(--bg-card)]'}`}
+              aria-label="Toggle filter"
+              title="Filter notes"
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+            </button>
+            <button
               onClick={onToggleFilter}
               className={`p-1 rounded transition-colors ${filterFavorites ? 'text-rose-400 bg-rose-400/10' : 'text-[var(--text-muted)] hover:text-rose-400 hover:bg-[var(--bg-card)]'}`}
               aria-label="Toggle favorites filter"
@@ -273,6 +293,45 @@ export default function CollapsibleSidebar({
         }
       />
 
+      {/* Filter search bar */}
+      <AnimatePresence>
+        {showFilter && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden px-2 pb-1"
+          >
+            <div className="flex items-center gap-1.5 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-2 py-1.5 focus-within:border-cyber-cyan/40 transition-colors">
+              <Search className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={e => setFilterQuery(e.target.value)}
+                placeholder="Filter by title, tag..."
+                autoFocus
+                className="flex-1 bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none font-mono"
+              />
+              {filterQuery && (
+                <button
+                  onClick={() => setFilterQuery('')}
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  aria-label="Clear filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {q && (
+              <p className="text-[9px] font-mono text-[var(--text-muted)] px-1 mt-1">
+                {displayedNotes.length} result{displayedNotes.length !== 1 ? 's' : ''} for &quot;{q}&quot;
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence initial={false}>
         {sections.files && (
           <motion.div
@@ -283,14 +342,18 @@ export default function CollapsibleSidebar({
             className="overflow-hidden"
           >
             <div className="px-2 pb-2 space-y-1 max-h-[280px] overflow-y-auto">
-              {filteredNotes.length === 0 ? (
+              {displayedNotes.length === 0 ? (
                 <div className="py-6 text-center">
-                  <p className="text-[10px] font-mono text-[var(--text-muted)] mb-2">NO FILES HERE</p>
-                  <button onClick={onCreateNote} className="text-[11px] font-mono text-cyber-cyan hover:underline">
-                    + Create Note
-                  </button>
+                  <p className="text-[10px] font-mono text-[var(--text-muted)] mb-2">
+                    {q ? 'NO MATCHES FOUND' : 'NO FILES HERE'}
+                  </p>
+                  {!q && (
+                    <button onClick={onCreateNote} className="text-[11px] font-mono text-cyber-cyan hover:underline">
+                      + Create Note
+                    </button>
+                  )}
                 </div>
-              ) : filteredNotes.map(note => {
+              ) : displayedNotes.map(note => {
                 const isActive = note.id === activeNoteId;
                 return (
                   <div
