@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText } from 'lucide-react';
 import type { Note } from '@/types';
@@ -47,43 +47,38 @@ export default function Editor({ note, showPreview, saveStatus, onUpdateNote, on
   const [activeFormats, setActiveFormats] = useState<Set<FormatType>>(new Set());
   const [hasSelection,  setHasSelection]  = useState(false);
 
-  // ── Detect active formatting at cursor ───────────────────
-  const detectFormats = useCallback(() => {
+  // ── Detect active formatting — plain function, called on events only ──
+  const detectFormats = () => {
     const ta = textareaRef.current;
-    if (!ta || !note) return;
+    if (!ta) return;
     const { selectionStart: s, selectionEnd: e, value } = ta;
-
-    // Track selection
     setHasSelection(s !== e);
-
     const lineStart = value.lastIndexOf('\n', s - 1) + 1;
     const lineEnd   = value.indexOf('\n', s);
     const line      = value.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
     const active    = new Set<FormatType>();
-
     if (isCursorInBold(value, s))   active.add('bold');
     if (isCursorInItalic(value, s)) active.add('italic');
     if (/^#{1,6}\s/.test(line))     active.add('header');
     if (/^- \[[ x]\]\s/.test(line)) active.add('checkbox');
     if (/^\|/.test(line))           active.add('table');
-
     setActiveFormats(active);
-  }, [note]);
+  };
 
-  // ── Restore cursor after React re-render ─────────────────
+  // ── Restore cursor ONLY when content changes from formatting insert ───
+  const prevContent = useRef<string>('');
   useEffect(() => {
-    const ta = textareaRef.current;
-    if (pendingSelect.current && ta) {
-      const [s, e] = pendingSelect.current;
-      pendingSelect.current = null;
-      // Use timeout to ensure React has finished painting
-      setTimeout(() => {
-        ta.focus();
-        ta.setSelectionRange(s, e);
-      }, 0);
+    if (!note) return;
+    if (pendingSelect.current && note.content !== prevContent.current) {
+      const ta = textareaRef.current;
+      if (ta) {
+        const [s, e] = pendingSelect.current;
+        pendingSelect.current = null;
+        setTimeout(() => { ta.focus(); ta.setSelectionRange(s, e); }, 0);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note?.content]);
+    prevContent.current = note.content;
+  }, [note?.content]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Line numbers ──────────────────────────────────────────
   const lineNumbers = useMemo(() => {
