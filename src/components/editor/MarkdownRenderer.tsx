@@ -45,8 +45,14 @@ function parseInline(text: string): React.ReactNode[] {
       const pos = text.indexOf(sp, i);
       if (pos !== -1 && pos < next) next = pos;
     }
-    tokens.push({ type: 'text', text: text.slice(i, next) });
-    i = next;
+    if (next === i) {
+      // No special char found at current position — advance by 1 to avoid infinite loop
+      tokens.push({ type: 'text', text: text[i] });
+      i += 1;
+    } else {
+      tokens.push({ type: 'text', text: text.slice(i, next) });
+      i = next;
+    }
   }
 
   return tokens.map((tok, idx) => {
