@@ -238,8 +238,8 @@ export default function Editor({ note, showPreview, saveStatus, onUpdateNote, on
       />
 
       {/* Editor / Preview split */}
-      <div className={`flex-1 flex overflow-hidden ${showPreview ? 'flex-col md:flex-row' : 'flex-row'}`}>
-        <div className={`flex overflow-hidden ${showPreview ? 'md:w-1/2 md:border-r border-b md:border-b-0 border-[var(--border-subtle)] min-h-[40%] md:min-h-0' : 'w-full'}`}>
+      <div className={`flex-1 flex min-h-0 overflow-hidden ${showPreview ? 'flex-col md:flex-row' : 'flex-row'}`}>
+        <div className={`flex overflow-hidden ${showPreview ? 'h-1/2 md:h-auto md:w-1/2 md:border-r border-b md:border-b-0 border-[var(--border-subtle)]' : 'w-full'}`}>
           {/* Line numbers */}
           <div className="select-none text-right pr-3 pl-3 sm:pl-4 py-4 text-[11px] font-mono text-[var(--text-muted)] leading-relaxed min-w-[2.5rem] sm:min-w-[3rem] bg-[var(--bg-card)] border-r border-[var(--border-subtle)] overflow-hidden">
             {lineNumbers.map(n => <div key={n} className="h-[1.5rem]">{n}</div>)}
@@ -266,7 +266,7 @@ export default function Editor({ note, showPreview, saveStatus, onUpdateNote, on
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
-              className="md:w-1/2 flex-1 overflow-y-auto p-4 md:p-6 bg-[var(--bg-base)]"
+              className="md:w-1/2 flex-1 h-1/2 md:h-auto overflow-y-auto p-4 md:p-6 bg-[var(--bg-base)]"
             >
               <MarkdownRenderer content={note.content} />
             </motion.div>
