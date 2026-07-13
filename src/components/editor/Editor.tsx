@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText } from 'lucide-react';
 import type { Note } from '@/types';
@@ -16,31 +16,151 @@ interface Props {
   onExport: () => void;
 }
 
-export default function Editor({ note, showPreview, saveStatus, onUpdateNote, onTogglePreview, onExport }: Props) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+// Check if cursor is inside **bold** markers
+function isCursorInBold(value: string, pos: number): boolean {
+  // Find all **..** pairs and check if pos is inside one
+  const re = /\*\*([^*]+)\*\*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(value)) !== null) {
+    const inner_start = m.index + 2;
+    const inner_end   = m.index + 2 + m[1].length;
+    if (pos >= inner_start && pos <= inner_end) return true;
+  }
+  return false;
+}
 
+// Check if cursor is inside *italic* markers (not **)
+function isCursorInItalic(value: string, pos: number): boolean {
+  const re = /(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(value)) !== null) {
+    const inner_start = m.index + 1;
+    const inner_end   = m.index + 1 + m[1].length;
+    if (pos >= inner_start && pos <= inner_end) return true;
+  }
+  return false;
+}
+
+export default function Editor({ note, showPreview, saveStatus, onUpdateNote, onTogglePreview, onExport }: Props) {
+  const textareaRef   = useRef<HTMLTextAreaElement>(null);
+  const pendingSelect = useRef<[number, number] | null>(null);
+  const [activeFormats, setActiveFormats] = useState<Set<FormatType>>(new Set());
+  const [hasSelection,  setHasSelection]  = useState(false);
+
+  // ── Detect active formatting at cursor ───────────────────
+  const detectFormats = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta || !note) return;
+    const { selectionStart: s, selectionEnd: e, value } = ta;
+
+    // Track selection
+    setHasSelection(s !== e);
+
+    const lineStart = value.lastIndexOf('\n', s - 1) + 1;
+    const lineEnd   = value.indexOf('\n', s);
+    const line      = value.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+    const active    = new Set<FormatType>();
+
+    if (isCursorInBold(value, s))   active.add('bold');
+    if (isCursorInItalic(value, s)) active.add('italic');
+    if (/^#{1,6}\s/.test(line))     active.add('header');
+    if (/^- \[[ x]\]\s/.test(line)) active.add('checkbox');
+    if (/^\|/.test(line))           active.add('table');
+
+    setActiveFormats(active);
+  }, [note]);
+
+  // ── Restore cursor after React re-render ─────────────────
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (pendingSelect.current && ta) {
+      const [s, e] = pendingSelect.current;
+      pendingSelect.current = null;
+      // Use timeout to ensure React has finished painting
+      setTimeout(() => {
+        ta.focus();
+        ta.setSelectionRange(s, e);
+      }, 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note?.content]);
+
+  // ── Line numbers ──────────────────────────────────────────
   const lineNumbers = useMemo(() => {
     if (!note) return [1];
     return Array.from({ length: note.content.split('\n').length }, (_, i) => i + 1);
   }, [note?.content]);
 
+  // ── Insert formatting ─────────────────────────────────────
   const insertFormatting = (type: FormatType) => {
     const ta = textareaRef.current;
     if (!ta || !note) return;
-    const { selectionStart: start, selectionEnd: end } = ta;
-    const sel = ta.value.substring(start, end);
-    let insertion = '';
+
+    // Read positions BEFORE any state change
+    const start  = ta.selectionStart;
+    const end    = ta.selectionEnd;
+    const sel    = ta.value.substring(start, end);
+    const before = ta.value.slice(0, start);
+    const after  = ta.value.slice(end);
+
+    let newContent  = '';
+    let selectStart = start;
+    let selectEnd   = start;
+
     switch (type) {
-      case 'bold':     insertion = `**${sel || 'bold text'}**`; break;
-      case 'italic':   insertion = `*${sel || 'italic text'}*`; break;
-      case 'code':     insertion = `\n\`\`\`typescript\n${sel || '// code here'}\n\`\`\`\n`; break;
-      case 'header':   insertion = `\n## ${sel || 'Section Heading'}\n`; break;
-      case 'checkbox': insertion = `\n- [ ] ${sel || 'Task item'}\n`; break;
-      case 'table':    insertion = `\n| Column A | Column B | Column C |\n| :--- | :--- | :--- |\n| ${sel || 'Value'} | Value | Value |\n`; break;
+      case 'bold': {
+        const ph      = sel || 'bold text';
+        newContent    = before + `**${ph}**` + after;
+        selectStart   = start + 2;
+        selectEnd     = start + 2 + ph.length;
+        break;
+      }
+      case 'italic': {
+        const ph      = sel || 'italic text';
+        newContent    = before + `*${ph}*` + after;
+        selectStart   = start + 1;
+        selectEnd     = start + 1 + ph.length;
+        break;
+      }
+      case 'code': {
+        const ph      = sel || '// code here';
+        const block   = `\n\`\`\`typescript\n${ph}\n\`\`\`\n`;
+        newContent    = before + block + after;
+        selectStart   = before.length + 16;
+        selectEnd     = selectStart + ph.length;
+        break;
+      }
+      case 'header': {
+        const ph      = sel || 'Section Heading';
+        const line    = `\n## ${ph}\n`;
+        newContent    = before + line + after;
+        selectStart   = before.length + 5;
+        selectEnd     = selectStart + ph.length;
+        break;
+      }
+      case 'checkbox': {
+        const ph      = sel || 'Task item';
+        const line    = `\n- [ ] ${ph}\n`;
+        newContent    = before + line + after;
+        selectStart   = before.length + 7;
+        selectEnd     = selectStart + ph.length;
+        break;
+      }
+      case 'table': {
+        const t       = `\n| Column A | Column B | Column C |\n| :--- | :--- | :--- |\n| Value | Value | Value |\n`;
+        newContent    = before + t + after;
+        selectStart   = before.length + t.length;
+        selectEnd     = selectStart;
+        break;
+      }
+      default: return;
     }
-    const newContent = ta.value.slice(0, start) + insertion + ta.value.slice(end);
+
     onUpdateNote({ content: newContent });
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + insertion.length, start + insertion.length); }, 50);
+    pendingSelect.current = [selectStart, selectEnd];
+
+    // Clear active state after insert
+    setTimeout(() => { setActiveFormats(new Set()); setHasSelection(false); }, 100);
   };
 
   // ── Empty state ───────────────────────────────────────────
@@ -109,7 +229,13 @@ export default function Editor({ note, showPreview, saveStatus, onUpdateNote, on
         </div>
       </div>
 
-      <Toolbar onFormat={insertFormatting} onExport={onExport} saveStatus={saveStatus} />
+      <Toolbar
+        onFormat={insertFormatting}
+        onExport={onExport}
+        saveStatus={saveStatus}
+        activeFormats={activeFormats}
+        hasSelection={hasSelection}
+      />
 
       {/* Editor / Preview split */}
       <div className={`flex-1 flex overflow-hidden ${showPreview ? 'flex-col md:flex-row' : 'flex-row'}`}>
@@ -122,6 +248,9 @@ export default function Editor({ note, showPreview, saveStatus, onUpdateNote, on
             ref={textareaRef}
             value={note.content}
             onChange={e => onUpdateNote({ content: e.target.value })}
+            onSelect={detectFormats}
+            onClick={detectFormats}
+            onKeyUp={detectFormats}
             spellCheck={false}
             className="flex-1 resize-none bg-transparent p-3 sm:p-4 text-sm font-mono text-[var(--text-secondary)] leading-relaxed focus:outline-none overflow-y-auto"
             style={{ lineHeight: '1.5rem' }}
