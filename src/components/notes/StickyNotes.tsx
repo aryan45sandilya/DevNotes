@@ -87,7 +87,7 @@ export default function StickyNotes({ stickies, onAdd, onUpdate, onDelete, onCol
                     {/* Card header */}
                     <div className="flex justify-between items-center">
                       <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-semibold ${cl.badge}`}>
-                        PAD_{sticky.id.substring(2, 6).toUpperCase()}
+                        PAD_{sticky.id.slice(-4).toUpperCase()}
                       </span>
                       <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                         {/* Colour picker */}
